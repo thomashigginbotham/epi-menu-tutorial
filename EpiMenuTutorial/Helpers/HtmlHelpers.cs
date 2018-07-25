@@ -1,4 +1,5 @@
-﻿using EPiServer;
+﻿using EpiMenuTutorial.Business;
+using EPiServer;
 using EPiServer.Core;
 using EPiServer.ServiceLocation;
 using EPiServer.Web.Mvc.Html;
@@ -50,6 +51,10 @@ namespace EpiMenuTutorial.Helpers
             var currentContentLink = helper.ViewContext.RequestContext
                 .GetContentLink();
             var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
+
+            IEnumerable<PageData> filter(IEnumerable<PageData> pages) =>
+                pages.FilterForDisplay(requirePageTemplate, requireVisibleInMenu);
+
             var ancestors = contentLoader.GetAncestors(currentContentLink)
                 .Reverse()
                 .Select(x => x.ContentLink)
@@ -60,7 +65,8 @@ namespace EpiMenuTutorial.Helpers
                     x,
                     currentContentLink,
                     ancestors,
-                    contentLoader))
+                    contentLoader,
+                    filter))
                 .ToList();
 
             if (includeRoot)
@@ -71,7 +77,8 @@ namespace EpiMenuTutorial.Helpers
                         contentLoader.Get<PageData>(rootLink),
                         currentContentLink,
                         ancestors,
-                        contentLoader));
+                        contentLoader,
+                        filter));
             }
 
             var buffer = new StringBuilder();
@@ -90,7 +97,8 @@ namespace EpiMenuTutorial.Helpers
             PageData page,
             ContentReference currentContentLink,
             List<ContentReference> ancestors,
-            IContentLoader contentLoader)
+            IContentLoader contentLoader,
+            Func<IEnumerable<PageData>, IEnumerable<PageData>> filter)
         {
             bool selected = page.ContentLink.CompareToIgnoreWorkID(currentContentLink);
             bool ancestorOfSelected = !selected && ancestors.Contains(page.ContentLink);
@@ -99,8 +107,8 @@ namespace EpiMenuTutorial.Helpers
             {
                 Selected = selected,
                 AncestorOfSelected = ancestorOfSelected,
-                HasChildren = new Lazy<bool>(() =>
-                    contentLoader.GetChildren<PageData>(page.ContentLink).Any())
+                HasChildren = new Lazy<bool>(() => filter(
+                    contentLoader.GetChildren<PageData>(page.ContentLink)).Any())
             };
 
             return menuItem;
