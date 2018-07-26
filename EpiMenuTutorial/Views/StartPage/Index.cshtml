@@ -1,6 +1,127 @@
 ﻿@using EPiServer.Core
+@using EPiServer.Web
 @using EPiServer.Web.Mvc.Html
-
+@using EpiMenuTutorial.Helpers
 @model EpiMenuTutorial.Models.Pages.StartPage
+<link rel="stylesheet" href="~/Content/bootstrap.css" />
+<style>
 
-<p>TODO: Add a menu.</p>
+  body {
+    padding: 1rem;
+  }
+
+  .dropdown:hover > .dropdown-menu,
+  .nav-link:focus + .dropdown-menu,
+  .dropdown:focus-within > .dropdown-menu {
+    display: block;
+    margin-top: 0;
+  }
+</style>
+@helper MenuItemTemplate(HtmlHelpers.MenuItem item)
+{
+  <li class="nav-item">
+    @if (item.Selected)
+    {
+      @Html.PageLink(item.Page, null, new
+      {
+        @class = "nav-link active",
+        aria_current = "page"
+      })
+    }
+    else
+    {
+      @Html.PageLink(item.Page, null, new
+      {
+        @class = "nav-link"
+      })
+    }
+  </li>
+}
+@helper DropdownItemTemplate(HtmlHelpers.MenuItem item)
+{
+  string classActive = (item.Selected) ? "active" : "";
+  string classDropdown = (item.HasChildren.Value) ? "dropdown" : "";
+
+  <li class="@($"nav-item {classActive} {classDropdown}")"
+      aria-current="@(item.Selected ? "page" : null)">
+    @Html.PageLink(item.Page, null, new
+    {
+      @class="nav-link"
+    })
+    @if (item.HasChildren.Value)
+    {
+      <ul class="dropdown-menu">
+        @Html.MenuList(
+          item.Page.ContentLink,
+          DropdownItemTemplate
+        )
+      </ul>
+    }
+  </li>
+}
+
+@helper BreadcrumbItemTemplate(HtmlHelpers.MenuItem item)
+{
+  if (!item.Selected && !item.AncestorOfSelected)
+  {
+    return;
+  }
+
+  if (item.AncestorOfSelected)
+  {
+    <li class="breadcrumb-item">
+      @Html.PageLink(item.Page)
+
+      @Html.MenuList(
+        item.Page.ContentLink,
+        BreadcrumbItemTemplate
+      )
+    </li>
+  }
+
+  if (item.Selected)
+  {
+    <li class="breadcrumb-item active" aria-current="page">
+      @item.Page.Name
+    </li>
+  }
+}
+
+<h1>Menus</h1>
+
+<h2>Simple Horizontal Menu</h2>
+<p>A simple tabbed menu that uses @@Html.MenuList to display pages from Episerver.</p>
+
+<nav>
+  <ul class="nav nav-tabs">
+    @Html.MenuList(
+      SiteDefinition.Current.StartPage,
+      MenuItemTemplate)
+  </ul>
+</nav>
+
+<h2 class="mt-5">Drop-down Menu</h2>
+<p>Similar to the horizontal menu, but capable of displaying child pages on hover or focus.</p>
+
+<nav class="navbar navbar-expand-lg">
+  <ul class="navbar-nav">
+    @Html.MenuList(
+      SiteDefinition.Current.StartPage,
+      DropdownItemTemplate)
+  </ul>
+</nav>
+
+<h2 class="mt-5">Breadcrumb Menu</h2>
+<p>A menu showing a trail of links back up to the start page.</p>
+
+<nav aria-label="Breadcrumb Menus">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      @Html.ContentLink("Home", SiteDefinition.Current.StartPage)
+    </li>
+
+    @Html.MenuList(
+      SiteDefinition.Current.StartPage,
+      BreadcrumbItemTemplate)
+  </ol>
+</nav>
